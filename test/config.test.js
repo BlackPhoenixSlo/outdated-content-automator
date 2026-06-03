@@ -8,11 +8,18 @@ function loadTimings() {
   return new Function(src + '\nreturn OCA_TIMINGS;')();
 }
 
+// Boolean feature flags in OCA_TIMINGS that are intentionally not numbers.
+const BOOLEAN_FLAGS = new Set(['RELOAD_ON_STALL']);
+
 test('every timing is a positive finite number', () => {
   const t = loadTimings();
   const keys = Object.keys(t);
   assert.ok(keys.length > 0, 'OCA_TIMINGS should not be empty');
   for (const k of keys) {
+    if (BOOLEAN_FLAGS.has(k)) {
+      assert.equal(typeof t[k], 'boolean', `${k} must be a boolean`);
+      continue;
+    }
     assert.equal(typeof t[k], 'number', `${k} must be a number`);
     assert.ok(Number.isFinite(t[k]) && t[k] > 0, `${k} must be finite and > 0`);
   }

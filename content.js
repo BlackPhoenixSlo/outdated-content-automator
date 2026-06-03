@@ -10,7 +10,19 @@ let __tProcessStart = null;
 let __tLastLog = null;
 let __tLogLines = [];
 let __tLogFlushPending = false;
+let __tLogSeeded = false;
+// On page load, seed the in-memory buffer from the persisted log so a reload
+// (e.g. stall recovery, or an accidental refresh) APPENDS to the existing log
+// instead of overwriting it. We hold off flushing until this completes so the
+// first write can't clobber prior history.
+chrome.storage.local.get('runLog', (res) => {
+    const prior = Array.isArray(res.runLog) ? res.runLog : [];
+    __tLogLines = prior.concat(__tLogLines);
+    __tLogSeeded = true;
+    __tFlushLog();
+});
 function __tFlushLog() {
+    if (!__tLogSeeded) return;     // wait until prior log is loaded, so we append not overwrite
     // Coalesce rapid writes into a single storage set.
     if (__tLogFlushPending) return;
     __tLogFlushPending = true;
@@ -66,6 +78,46 @@ function isCheckingDialog() {
     if (!dlg || dlg.offsetParent === null) return false;
     if (dlg.querySelector('[role="progressbar"]')) return true;
     return (dlg.innerText || '').toLowerCase().includes('checking');
+}
+
+// Handle a stall: the "New request" dialog/form didn't open in time (no
+// "Next"/"Image" tab/URL field). Almost always the tab was backgrounded and
+// Chrome throttled it. We wait a short cooldown and retry the SAME link, up to
+// STALL_MAX_RETRIES times, logging every attempt. Returns:
+//   'reload'  - page is reloading; caller must return (auto-resume retries)
+//   'retry'   - retry the same link in place; caller should `continue`
+//   'giveup'  - retries exhausted (or stopped); caller should break the run
+async function handleStall(currentIndex, link, reason) {
+    const key = `stallRetries_${currentIndex}`;
+    const store = await chrome.storage.local.get(key);
+    const tries = (store[key] || 0) + 1;
+    await chrome.storage.local.set({ [key]: tries });
+
+    if (tries > OCA_TIMINGS.STALL_MAX_RETRIES) {
+        tlog(`STALL on link #${currentIndex} (${reason}) - GAVE UP after ${tries - 1} retries`);
+        await chrome.storage.local.set({ isRunning: false });
+        await ocaFlushSync();
+        chrome.runtime.sendMessage({ action: "stalled", currentIndex, link, reason, retries: tries - 1 });
+        return 'giveup';
+    }
+
+    const secs = Math.round(OCA_TIMINGS.STALL_COOLDOWN / 1000);
+    tlog(`STALL on link #${currentIndex} (${reason}) - retry ${tries}/${OCA_TIMINGS.STALL_MAX_RETRIES} in ${secs}s`);
+    chrome.runtime.sendMessage({ action: "cooldown", currentIndex, link, seconds: secs, retry: tries, max: OCA_TIMINGS.STALL_MAX_RETRIES });
+    await ocaFlushSync();
+    await delay(OCA_TIMINGS.STALL_COOLDOWN);
+
+    // The user may have hit Stop during the wait.
+    const s = await chrome.storage.local.get('isRunning');
+    if (!s.isRunning) { tlog('stopped during cooldown - not retrying'); return 'giveup'; }
+
+    if (OCA_TIMINGS.RELOAD_ON_STALL) {
+        tlog(`cooldown elapsed - reloading page to retry link #${currentIndex}`);
+        location.reload(); // auto-resume on load re-runs startProcess at the same currentIndex
+        return 'reload';
+    }
+    tlog(`cooldown elapsed - retrying link #${currentIndex} in place`);
+    return 'retry';
 }
 
 // Ensure process loops through links
@@ -128,7 +180,10 @@ async function startProcess() {
         const newReqSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'New request');
         if (!newReqSpan) {
             console.error("Could not find 'New request' button.");
-            break;
+            const r = await handleStall(currentIndex, link, 'New request button missing');
+            if (r === 'reload') return;   // page reloading; auto-resume continues
+            if (r === 'giveup') break;
+            continue;                     // retry same link in place
         }
         newReqSpan.closest('button').click();
         tlog('clicked "New request"');
@@ -208,7 +263,10 @@ async function startProcess() {
 
         if (!inputField) {
             console.error("Could not find input field for URL.");
-            break;
+            const r = await handleStall(currentIndex, link, 'URL input field missing (dialog did not open)');
+            if (r === 'reload') return;   // page reloading; auto-resume continues
+            if (r === 'giveup') break;
+            continue;                     // retry same link in place
         }
 
         inputField.focus();
@@ -242,13 +300,21 @@ async function startProcess() {
                 submittedSet.add(link);
                 await ocaSaveSubmitted(Array.from(submittedSet));
                 tlog(`recorded submitted URL ${link}`);
+                // Submission went through: clear any stall counter for this index.
+                chrome.storage.local.remove(`stallRetries_${currentIndex}`);
             } else {
                 console.error("Submit button is disabled or not found.");
-                break;
+                const r = await handleStall(currentIndex, link, 'Submit button disabled/not found');
+                if (r === 'reload') return;
+                if (r === 'giveup') break;
+                continue;
             }
         } else {
             console.error("Could not find Submit button");
-            break;
+            const r = await handleStall(currentIndex, link, 'Submit button missing');
+            if (r === 'reload') return;
+            if (r === 'giveup') break;
+            continue;
         }
 
         // 6. Confirm. After Submit, Google often shows a "Checking page URL"
@@ -372,3 +438,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ status: "started" });
     }
 });
+
+// Auto-resume an in-progress run after a page reload. Stall recovery reloads the
+// GSC page to reset Google's SPA, and this picks the run back up at the same
+// currentIndex. Also recovers from an accidental refresh while running.
+(async () => {
+    const { isRunning } = await chrome.storage.local.get('isRunning');
+    if (isRunning) {
+        tlog('page loaded with isRunning=true - auto-resuming run');
+        startProcess();
+    }
+})();

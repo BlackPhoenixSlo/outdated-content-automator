@@ -162,6 +162,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusDiv.innerText = `Running... (${message.currentIndex}/${message.total})`;
         } else if (message.action === "done") {
             updateStatus();
+        } else if (message.action === "cooldown") {
+            // Dialog didn't open (tab was likely backgrounded). Retrying shortly.
+            statusDiv.innerText = `⏳ Link #${message.currentIndex} stalled. `
+                + `Retrying in ${message.seconds}s (attempt ${message.retry}/${message.max}). `
+                + `Keep this tab open.`;
+        } else if (message.action === "stalled") {
+            // Gave up after exhausting retries — tell the user.
+            statusDiv.innerText = `⛔ Stopped at link #${message.currentIndex} after ${message.retries} retries `
+                + `(${message.reason}). Press Start to resume from this index.`;
+            startBtn.disabled = false;
         }
     });
 

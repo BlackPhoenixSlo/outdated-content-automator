@@ -43,4 +43,15 @@ const OCA_TIMINGS = {
 
     // --- Between links ---
     BETWEEN_LINKS: 2000,           // pause after Ok, before starting the next link
+
+    // --- Stall recovery ---
+    // There is NO quota on this tool. A stall just means the "New request" dialog
+    // didn't open in time — usually because the tab was backgrounded (you switched
+    // apps) and Chrome throttled it. So we simply wait a short cooldown and retry
+    // the SAME link in place (progress is not advanced), many times. Every stall
+    // and retry is logged. After STALL_MAX_RETRIES the run stops and notifies, so
+    // it can't spin truly forever.
+    STALL_COOLDOWN: 60 * 1000,      // wait before retrying after a stall (1 min)
+    STALL_MAX_RETRIES: 20,          // retry a stuck link this many times before giving up
+    RELOAD_ON_STALL: false,         // false = retry in place (light); true = reload the page first
 };

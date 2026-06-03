@@ -2,65 +2,15 @@
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
-// Short pause after a click so Google's dialog/animation can settle before we
-// query for the next element. This prevents matching a button mid-transition
-// (which was clicking the wrong button and triggering "Something went wrong").
-const SETTLE = 600;
-
-// Generic poll: returns the element as soon as it exists (poll every 150ms).
-async function waitForElement(selector, timeout = 6000) {
+async function waitForElementText(selector, text, timeout = 5000) {
     const start = Date.now();
-    while (Date.now() - start < timeout) {
-        const el = document.querySelector(selector);
-        if (el) return el;
-        await delay(150);
-    }
-    return null;
-}
-
-// True if the element is actually visible on screen (not a hidden sibling input).
-function isVisible(el) {
-    return !!el && el.offsetParent !== null;
-}
-
-// Wait specifically for the VISIBLE "Search results URL" input. The dialog keeps
-// the other radio's inputs (Image URL / Containing page URL) in the DOM too, so
-// we must pick the right, visible one — not just the first match.
-async function waitForUrlInput(timeout = 6000) {
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
-        // Most specific first: the placeholder is unique to this box.
-        const byPlaceholder = Array.from(document.querySelectorAll('input[placeholder="Search results URL"]'));
-        const visible = byPlaceholder.find(isVisible);
-        if (visible) return visible;
-
-        // Fallback: any visible text input inside the open dialog.
-        const dialog = document.querySelector('[role="dialog"]') || document;
-        const candidate = Array.from(dialog.querySelectorAll('input[type="text"]')).find(isVisible);
-        if (candidate) return candidate;
-
-        await delay(150);
-    }
-    return null;
-}
-
-// Wait for an element whose trimmed text matches `text` (poll every 150ms).
-async function waitForElementText(selector, text, timeout = 6000) {
-    const start = Date.now();
-    const target = text.toLowerCase();
     while (Date.now() - start < timeout) {
         const els = Array.from(document.querySelectorAll(selector));
-        const el = els.find(e => e.innerText && e.innerText.trim().toLowerCase() === target);
+        const el = els.find(e => e.innerText && e.innerText.trim().toLowerCase() === text.toLowerCase());
         if (el) return el;
-        await delay(150);
+        await delay(500);
     }
     return null;
-}
-
-// Detect Google's "Something went wrong" error banner/dialog.
-function pageHasError() {
-    const text = (document.body.innerText || '').toLowerCase();
-    return text.includes('something went wrong');
 }
 
 // Ensure process loops through links
@@ -74,14 +24,6 @@ async function startProcess() {
         const link = links[currentIndex];
         console.log("Processing link:", link);
 
-        // Bail out cleanly if Google is showing an error — let the user reset.
-        if (pageHasError()) {
-            console.error("Google is showing 'Something went wrong'. Stopping so you can reload the page.");
-            await chrome.storage.local.set({ isRunning: false });
-            chrome.runtime.sendMessage({ action: "error", message: "Google error: 'Something went wrong'. Reload the page and press Start again." });
-            return;
-        }
-
         // 1. Click "New request"
         const newReqSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'New request');
         if (!newReqSpan) {
@@ -89,17 +31,17 @@ async function startProcess() {
             break;
         }
         newReqSpan.closest('button').click();
-        await delay(SETTLE); // let the dialog open before looking for Next/Image
+        await delay(1500);
 
-        // Optional: "Next" button may appear in the dialog
-        const nextBtnSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'Next', 2500);
+        // Optional: Check if "Next" button appears right away
+        const nextBtnSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'Next', 2000);
         if (nextBtnSpan) {
             nextBtnSpan.closest('button').click();
-            await delay(SETTLE);
+            await delay(1000);
         }
 
-        // 2. Click "Image" tab/option (wait until it shows up)
-        let imageTab = await waitForElementText('.VfPpkd-vQzf8d, [role="tab"] span, span[jsname="V67aGc"], span.VfPpkd-YVzG2b', 'Image', 4000);
+        // 2. Click "Image" tab/option
+        let imageTab = await waitForElementText('.VfPpkd-vQzf8d, [role="tab"] span, span[jsname="V67aGc"], span.VfPpkd-YVzG2b', 'Image', 3000);
         if (!imageTab) {
             // fallback using user's explicit jsname for Image
             const ksKsZd = document.querySelector('span[jsname="ksKsZd"]');
@@ -113,37 +55,45 @@ async function startProcess() {
         if (imageTab) {
             let clickable = imageTab.closest('[role="tab"]') || imageTab.closest('button') || imageTab;
             clickable.click();
-            await delay(SETTLE); // let the Image panel render before clicking the radio
+            await delay(1000);
         } else {
             console.error("Could not find Image tab, but continuing anyway.");
         }
 
-        // 3. Second option (Radio button) — wait for it, then click
+        // 3. Second option (Radio button)
+        // Try clicking the radio input directly, or its exact label container
         let secondOptionClicked = false;
-        const radioInput = await waitForElement('input[type="radio"][value="XYxcBb"]', 4000);
+
+        // 1. Try finding input[type="radio"][value="XYxcBb"] directly
+        const radioInput = document.querySelector('input[type="radio"][value="XYxcBb"]');
         if (radioInput) {
             radioInput.click();
             secondOptionClicked = true;
-            await delay(SETTLE);
+            await delay(1000);
         }
 
-        // Fallback: label text matching if input wasn't found/didn't work
+        // 2. Try label text matching again if input wasn't found/didn't work
         if (!secondOptionClicked) {
             const labels = Array.from(document.querySelectorAll('label.VfPpkd-V67aGc, label, span'));
             const radioLabel = labels.find(l => l.innerText && l.innerText.includes('Copy link address'));
             if (radioLabel) {
+                // Try clicking the label
                 radioLabel.click();
+
+                // Also trigger click on previous sibling if it's the custom google radio div
                 if (radioLabel.previousElementSibling) {
                     radioLabel.previousElementSibling.click();
                 }
-                await delay(SETTLE);
+                await delay(1000);
             } else {
                 console.error("Second option element not found directly or by label.");
             }
         }
 
-        // 4. Paste link — wait for the VISIBLE "Search results URL" input
-        const inputField = await waitForUrlInput(4000);
+        // 4. Paste link
+        const inputField = document.querySelector('input[placeholder="Search results URL"]')
+            || document.querySelector('input.VfPpkd-fmcmS-wGMbrd')
+            || document.querySelector('input[jsname="YPqjbf"][type="text"]');
 
         if (!inputField) {
             console.error("Could not find input field for URL.");
@@ -163,20 +113,17 @@ async function startProcess() {
         inputField.dispatchEvent(new Event('input', { bubbles: true }));
         inputField.dispatchEvent(new Event('change', { bubbles: true }));
         inputField.blur();
-        await delay(SETTLE); // give Google a moment to validate the URL / enable Submit
 
-        // 5. Submit — wait for it, and wait until it's enabled
-        let submitSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'Submit');
-        let btn = submitSpan ? submitSpan.closest('button') : null;
-        if (btn) {
-            const enableStart = Date.now();
-            while (btn.disabled && Date.now() - enableStart < 4000) {
-                await delay(150);
-            }
-            if (!btn.disabled) {
+        await delay(1000);
+
+        // 5. Submit
+        const submitSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'Submit');
+        if (submitSpan) {
+            const btn = submitSpan.closest('button');
+            if (btn && !btn.disabled) {
                 btn.click();
             } else {
-                console.error("Submit button stayed disabled.");
+                console.error("Submit button is disabled or not found.");
                 break;
             }
         } else {
@@ -184,7 +131,7 @@ async function startProcess() {
             break;
         }
 
-        // 6. Wait for "Submit request" confirmation and/or "Ok"
+        // 6. Wait for "Submit request" or "Ok"
         const finalPhaseStart = Date.now();
         let okClicked = false;
 
@@ -210,11 +157,11 @@ async function startProcess() {
                     wordInput.dispatchEvent(new Event('input', { bubbles: true }));
                     wordInput.dispatchEvent(new Event('change', { bubbles: true }));
                     wordInput.blur();
-                    await delay(SETTLE);
+                    await delay(500);
                 }
 
                 submitRequestSpan.closest('button').click();
-                await delay(SETTLE);
+                await delay(1000); // Give it time to transition to "Ok"
             }
 
             // Now check for "Ok"
@@ -224,11 +171,15 @@ async function startProcess() {
                 console.log("Clicked Ok for link:", link);
                 okClicked = true;
             }
+
+            await delay(500);
         }
 
         if (!okClicked) {
             console.error("Could not find OK button after submission within timeout.");
         }
+
+        await delay(2000); // Wait for modal to close fully before next loop
 
         // Update state to next link
         currentIndex++;
@@ -237,10 +188,6 @@ async function startProcess() {
 
         state = await chrome.storage.local.get('isRunning');
         isRunning = state.isRunning;
-
-        // Wait for the modal to fully close (New request ready again) before next link
-        await delay(SETTLE);
-        await waitForElementText('span.VfPpkd-vQzf8d', 'New request', 5000);
     }
 
     if (currentIndex >= links.length) {

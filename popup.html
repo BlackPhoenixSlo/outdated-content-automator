@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            width: 320px;
+            padding: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        h3 {
+            margin-top: 0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <h3>Outdated Content Automator</h3>
+    <div class="hint">Paste links here, separated by newlines:</div>
+    <textarea id="links" placeholder="https://example.com/bad-image.jpg&#10;https://example.com/another.jpg"></textarea>
+    <div class="hint">Optional: Word to verify outdated content</div>
+    <input type="text" id="verifyWord" placeholder="e.g. chinesegalweiwei"
+        style="width: 100%; padding: 8px; box-sizing: border-box; margin-bottom: 10px; font-family: -apple-system, sans-serif;">
+    <div class="controls">
+        <button id="start">Start processing</button>
+        <button id="stop">Stop</button>
+    </div>
+    <div id="status">Idle.</div>
+    <script src="popup.js"></script>
+</body>
+
+</html>

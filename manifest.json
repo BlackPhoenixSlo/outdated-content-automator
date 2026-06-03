@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Outdated Content Automator",
+  "version": "1.0",
+  "description": "Automates Google Outdated Content Tool link submission",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://search.google.com/search-console/remove-outdated-content*"],
+      "js": ["content.js"]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+can you make a extension that I provide links split by enter then the extesion slicks https://search.google.com/search-console/remove-outdated-content?hl=en
+new request button 
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ VfPpkd-LgbsSe-OWXEXe-dgl2Hf nCP5yc AjY5Oe DuMIQc LQeN7 xMagt" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="nCP5yc AjY5Oe DuMIQc LQeN7 xMagt" jsname="Hf7sUe" style="--mdc-ripple-fg-size: 79px; --mdc-ripple-fg-scale: 1.8637423359050207; --mdc-ripple-fg-translate-start: 72px, -29.5px; --mdc-ripple-fg-translate-end: 26.71484375px, -21.5px;"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><div class="VfPpkd-RLmnJb"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">New request</span></button> THEN NEXT 
+
+<span jsname="V67aGc" class="VfPpkd-vQzf8d">Next</span>
+To refresh Google's outdated result for a webpage that has changed
+
+THEN IMAGE 
+
+<span class="VfPpkd-YVzG2b" jsname="ksKsZd"></span>
+
+THEN SECON OPTION <div class="VfPpkd-GCYh9b VfPpkd-GCYh9b-OWXEXe-dgl2Hf kDzhGf ZCYEwf wHsUjf" jsname="EMLscc" jscontroller="SU9Rsf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; contextmenu:mg9Pef;" style="--mdc-ripple-fg-size: 24px; --mdc-ripple-fg-scale: 1.6666666666666667; --mdc-ripple-left: 8px; --mdc-ripple-top: 8px;"><input class="VfPpkd-gBXA9-bMcfAe" type="radio" name="BbTVuc" id="c40" value="XYxcBb" jsname="YPqjbf" jsaction="focus:AHmuwe; blur:O22p3e; change:WPi0i;"><div class="VfPpkd-RsCWK"><div class="VfPpkd-wVo5xe-LkdAo"></div><div class="VfPpkd-Z5TpLc-LkdAo"></div></div><div class="VfPpkd-eHTEvd"></div><div class="VfPpkd-r6xRoe-LhBDec"></div></div>
+Enter "Copy link address" URL from Image Search results
+
+THEN PASTES IN INPUT FIELS 
+
+<input type="text" value="" id="c41" jsname="YPqjbf" class="VfPpkd-fmcmS-wGMbrd " jsaction="focus:AHmuwe;blur:O22p3e;input:YPqjbf; mousedown:UX7yZ; mouseup:lbsD7e; pointerdown:QJflP; pointerup:HxTfMe; touchstart:p6p2H; touchend:yfqBxc;" aria-controls="c44" aria-describedby="c44" placeholder="Search results URL" autocomplete="off">
+
+THEN PRESS SUBMIT <span jsname="V67aGc" class="VfPpkd-vQzf8d">Submit</span> THEN WAITS FOR SUBMITION AND CLICK OK THEN CONTINUE TO THE NEXT LINK 
+
+<span jsname="V67aGc" class="VfPpkd-vQzf8d">Ok</span>

@@ -49,6 +49,25 @@ async function waitForElementText(selector, text, timeout = OCA_TIMINGS.FIND_TIM
     return null;
 }
 
+// Synchronous (no waiting) lookup of a VISIBLE span with exact text. Used in
+// the tight confirm loop so the grace window isn't padded by blocking polls.
+function findVisibleText(text) {
+    const target = text.toLowerCase();
+    return Array.from(document.querySelectorAll('span.VfPpkd-vQzf8d'))
+        .find(e => e.offsetParent !== null && e.innerText && e.innerText.trim().toLowerCase() === target) || null;
+}
+
+// True while Google's "Checking page URL" loading dialog is up (progress bar +
+// Cancel). We must NEVER click in this state and NEVER treat it as done — the
+// submit is still being processed. Detected by a visible dialog that contains a
+// progress bar, or whose text says "checking".
+function isCheckingDialog() {
+    const dlg = document.querySelector('[role="dialog"]');
+    if (!dlg || dlg.offsetParent === null) return false;
+    if (dlg.querySelector('[role="progressbar"]')) return true;
+    return (dlg.innerText || '').toLowerCase().includes('checking');
+}
+
 // Ensure process loops through links
 async function startProcess() {
     let state = await chrome.storage.local.get(['links', 'currentIndex', 'isRunning', 'verifyWord']);
@@ -82,8 +101,17 @@ async function startProcess() {
         // (e.g. "Invalid URL" with only Cancel/Back). Dismiss it — scoped to the
         // dialog so we never touch a pending request's controls — so step 1 can
         // click a real "New request" instead of one hidden behind the modal.
+        // If a URL check is somehow still running, WAIT for it — never cancel a
+        // live check.
+        if (isCheckingDialog()) {
+            tlog('leftover "checking" dialog still up - waiting for it to finish');
+            const waitStart = Date.now();
+            while (isCheckingDialog() && Date.now() - waitStart < OCA_TIMINGS.CHECK_TIMEOUT) {
+                await delay(OCA_TIMINGS.FINAL_PHASE_LOOP);
+            }
+        }
         const leftover = document.querySelector('[role="dialog"]');
-        if (leftover && leftover.offsetParent !== null) {
+        if (leftover && leftover.offsetParent !== null && !isCheckingDialog()) {
             const dismiss = ['Ok', 'Cancel', 'Back', 'Discard']
                 .map(t => Array.from(leftover.querySelectorAll('span.VfPpkd-vQzf8d, button'))
                     .find(e => e.offsetParent !== null && e.innerText && e.innerText.trim().toLowerCase() === t.toLowerCase()))
@@ -223,31 +251,40 @@ async function startProcess() {
             break;
         }
 
-        // 6. Wait for "Submit request" or "Ok"
-        tlog('waiting for "Submit request"/"Ok" confirmation');
-        const finalPhaseStart = Date.now();
+        // 6. Confirm. After Submit, Google often shows a "Checking page URL"
+        //    loading dialog (progress bar + Cancel). We MUST wait that out —
+        //    never click during it, never move on — or the next link's cleanup
+        //    would hit its "Cancel" and abort the submit. Only once it clears do
+        //    we look for "Submit request"/"Ok"; if none shows, it submitted
+        //    silently.
+        tlog('confirming (checking page URL / Submit request / Ok)');
+        const phaseStart = Date.now();
         let okClicked = false;
-        let sawDialog = false; // becomes true once any confirmation dialog shows
+        let everChecked = false;  // did we see the "Checking page URL" dialog?
+        let checkDoneAt = null;   // when checking finished (for the grace window)
 
-        // Keep looping while: not done yet AND
-        //  - no dialog has appeared and we're still inside the short detect
-        //    window (FINAL_PHASE_TIMEOUT), OR
-        //  - a dialog HAS appeared and we're still inside the longer completion
-        //    cap (DIALOG_COMPLETE_TIMEOUT). This way a slow "Ok" is never
-        //    abandoned, but a silent submit is skipped quickly.
-        const keepWaiting = () => {
-            if (okClicked) return false;
-            const elapsed = Date.now() - finalPhaseStart;
-            return sawDialog
-                ? elapsed < OCA_TIMINGS.DIALOG_COMPLETE_TIMEOUT
-                : elapsed < OCA_TIMINGS.FINAL_PHASE_TIMEOUT;
-        };
+        while (!okClicked) {
+            const now = Date.now();
 
-        while (keepWaiting()) {
-            // Check if "Submit request" popped up
-            const submitRequestSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'Submit request', OCA_TIMINGS.SUBMIT_REQUEST_TIMEOUT);
+            // (a) Still actively checking the URL — wait it out, touch nothing.
+            if (isCheckingDialog()) {
+                everChecked = true;
+                checkDoneAt = null;
+                if (now - phaseStart >= OCA_TIMINGS.CHECK_TIMEOUT) {
+                    tlog(`"Checking page URL" exceeded ${OCA_TIMINGS.CHECK_TIMEOUT}ms - moving on`);
+                    break;
+                }
+                tlog('checking page URL... waiting');
+                await delay(OCA_TIMINGS.FINAL_PHASE_LOOP);
+                continue;
+            }
+
+            // Mark the instant checking finished, so we grace-wait for "Ok".
+            if (everChecked && checkDoneAt === null) checkDoneAt = now;
+
+            // (b) "Submit request" confirmation (may include the verify-word box).
+            const submitRequestSpan = findVisibleText('Submit request');
             if (submitRequestSpan) {
-                sawDialog = true;
                 console.log("Found 'Submit request' confirmation.");
 
                 // Check if there's a verification word text input
@@ -270,30 +307,44 @@ async function startProcess() {
                 }
 
                 submitRequestSpan.closest('button').click();
-                await delay(OCA_TIMINGS.AFTER_SUBMIT_REQUEST); // Give it time to transition to "Ok"
+                await delay(OCA_TIMINGS.AFTER_SUBMIT_REQUEST); // may kick off another "Checking" pass
+                continue; // re-loop: there may be another check, then "Ok"
             }
 
-            // Now check for "Ok"
-            const okSpan = await waitForElementText('span.VfPpkd-vQzf8d', 'Ok', OCA_TIMINGS.OK_TIMEOUT);
+            // (c) Success "Ok".
+            const okSpan = findVisibleText('Ok');
             if (okSpan) {
-                sawDialog = true;
                 okSpan.closest('button').click();
                 tlog(`clicked "Ok" - submission CONFIRMED for ${link}`);
                 okClicked = true;
+                break;
+            }
+
+            // (d) Nothing actionable on screen — decide whether to stop waiting.
+            const elapsed = now - phaseStart;
+            if (everChecked) {
+                // Checking finished and no confirm dialog within the grace window
+                // → silent success.
+                if (checkDoneAt !== null && now - checkDoneAt >= OCA_TIMINGS.AFTER_CHECK_GRACE) {
+                    tlog('check finished, no confirm dialog - assuming submitted OK');
+                    break;
+                }
+            } else if (elapsed >= OCA_TIMINGS.FINAL_PHASE_TIMEOUT) {
+                // Never saw a checking dialog and nothing showed → silent success.
+                tlog(`no dialog within ${OCA_TIMINGS.FINAL_PHASE_TIMEOUT}ms - assuming submitted OK`);
+                break;
             }
 
             await delay(OCA_TIMINGS.FINAL_PHASE_LOOP);
         }
 
-        if (!okClicked) {
-            // No "Ok"/"Submit request" dialog appeared in the window. Google
-            // usually just submits silently, so we treat this as success and
-            // move on rather than wasting time waiting for a button that never
-            // shows. (The URL was already recorded right after Submit.)
-            tlog(`no confirmation within ${OCA_TIMINGS.FINAL_PHASE_TIMEOUT}ms - assuming submitted OK, moving on`);
+        // After a real "Ok" the success modal is closing, so pause for it.
+        // After a silent success the grace window already served as the gap, so
+        // go straight to the next link (step 1 waits for a visible "New request"
+        // anyway, and cleans up any leftover dialog first).
+        if (okClicked) {
+            await delay(OCA_TIMINGS.BETWEEN_LINKS);
         }
-
-        await delay(OCA_TIMINGS.BETWEEN_LINKS); // Wait for modal to close fully before next loop
         tlog(`=== END link #${currentIndex} (next loop starts now)`);
 
         // Update state to next link

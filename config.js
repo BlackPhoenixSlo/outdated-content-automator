@@ -27,6 +27,14 @@ const OCA_TIMINGS = {
     // request, click Ok) up to this longer cap — so a slow-to-render "Ok"
     // doesn't get abandoned with the dialog left open.
     DIALOG_COMPLETE_TIMEOUT: 12000,
+    // While Google's "Checking page URL" loading dialog (progress bar) is shown,
+    // we WAIT — we never click anything and never move on, because moving on
+    // would let the next link's cleanup cancel the in-progress check. This is
+    // the max we'll wait for that check to finish (it's normally a few seconds).
+    CHECK_TIMEOUT: 30000,
+    // After the checking dialog clears, how long to keep watching for a
+    // "Submit request"/"Ok" confirmation before assuming a silent success.
+    AFTER_CHECK_GRACE: 2000,
     SUBMIT_REQUEST_TIMEOUT: 500,   // per-check wait for "Submit request"
     AFTER_VERIFY_WORD: 500,        // pause after typing the verification word
     AFTER_SUBMIT_REQUEST: 1000,    // pause after clicking "Submit request"

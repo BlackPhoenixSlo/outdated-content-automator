@@ -3,3 +3,7 @@ LINKS.TXT
 
 # OS junk
 .DS_Store
+
+# Build output and deps
+dist/
+node_modules/

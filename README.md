@@ -30,9 +30,25 @@ option → paste URL → Submit → Ok), then moves on to the next link.
 
 | File | Purpose |
 |------|---------|
-| `manifest.json` | Extension manifest (MV3), permissions, content-script match. |
+| `manifest.json` | Extension manifest (MV3), permissions, icons, content-script match. |
+| `config.js` | All wait/timeout values (the automation's ".env"). Loads before `content.js`. |
+| `storage.js` | Skip-list persistence (local + chunked Chrome-sync backup). |
 | `content.js` | Runs on the Outdated Content page; drives the submission flow. |
-| `popup.html` / `popup.js` | The popup UI: link input, verify word, Start/Stop, status. |
+| `popup.html` / `popup.js` | The popup UI: link input, verify word, Start/Stop, export/import, log. |
+| `icons/` | Toolbar/store icons (16/32/48/128) + the `icon.svg` source. |
+| `test/` | Unit tests (`node --test`) for storage, config, and manifest. |
+| `scripts/` | `build.sh` (Web Store zip) and `check-icons.js` (icon validator). |
+
+## Develop & package
+
+```bash
+npm test          # run the unit tests
+npm run lint:icons # verify icon PNGs exist at the right sizes
+npm run build     # produce dist/outdated-content-automator-<version>.zip
+```
+
+To publish to the Chrome Web Store, see **PUBLISHING.md** and **STORE_LISTING.md**
+(listing copy + permission justifications) and **PRIVACY.md** (privacy policy).
 
 ## Notes
 

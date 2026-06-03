@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusDiv.innerText = `Running... (${message.currentIndex}/${message.total})`;
         } else if (message.action === "done") {
             updateStatus();
+        } else if (message.action === "status_msg") {
+            statusDiv.innerText = message.message || "Working…";
         } else if (message.action === "error") {
             statusDiv.innerText = message.message || "Stopped due to an error.";
             startBtn.disabled = false;

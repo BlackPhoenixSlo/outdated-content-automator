@@ -1,15 +1,26 @@
 {
   "manifest_version": 3,
   "name": "Outdated Content Automator",
-  "version": "1.0",
-  "description": "Automates Google Outdated Content Tool link submission",
+  "version": "1.0.0",
+  "description": "Bulk-automates submitting links to Google's Remove Outdated Content tool, with a skip-list and resumable progress.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting"
+    "activeTab"
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {

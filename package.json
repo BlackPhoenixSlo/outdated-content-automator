@@ -1,0 +1,12 @@
+{
+  "name": "outdated-content-automator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome MV3 extension that bulk-automates Google's Remove Outdated Content tool.",
+  "scripts": {
+    "test": "node --test",
+    "build": "bash scripts/build.sh",
+    "lint:icons": "node scripts/check-icons.js"
+  },
+  "license": "MIT"
+}

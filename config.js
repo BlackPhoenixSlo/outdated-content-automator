@@ -56,6 +56,5 @@ const OCA_TIMINGS = {
     RELOAD_ON_STALL: false,         // false = retry in place (light); true = reload the page first
 };
 
-// Google Form for feedback / issue reports, linked from the popup.
-// REPLACE this placeholder with your own form's share link.
-const FEEDBACK_FORM_URL = 'https://forms.gle/REPLACE_ME';
+// Google Search Console "Remove Outdated Content" tool, linked from the popup.
+const REMOVAL_TOOL_URL = 'https://search.google.com/search-console/remove-outdated-content?utm_source=wmx&utm_medium=deprecation-pane&utm_content=removals';

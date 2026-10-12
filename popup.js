@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const linksArea = document.getElementById('links');
     const appendLinksBtn = document.getElementById('appendLinks');
 
-    document.getElementById('feedbackLink').href = FEEDBACK_FORM_URL;
+    document.getElementById('toolLink').href = REMOVAL_TOOL_URL;
 
     const updateSavedInfo = async () => {
         // ocaLoadSubmitted restores from the sync backup if local was wiped.

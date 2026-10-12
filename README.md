@@ -29,8 +29,8 @@ option → paste URL → Submit → Ok), then moves on to the next link.
    appended to the current queue (duplicates skipped) and picked up after the
    current link. When idle, press **Start processing** with an empty box to run
    the remaining queue.
-6. Found a bug or have feedback? Use the **Feedback / report issue** link at the
-   bottom of the popup (the form URL is `FEEDBACK_FORM_URL` in `config.js`).
+6. The link at the bottom of the popup opens Google's **Remove Outdated Content**
+   tool in a new tab (URL is `REMOVAL_TOOL_URL` in `config.js`).
 
 ## Files
 

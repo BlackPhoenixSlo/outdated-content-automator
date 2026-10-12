@@ -140,9 +140,11 @@ async function startProcess() {
             tlog(`=== SKIP already-submitted link #${currentIndex} ${link}`);
             currentIndex++;
             await chrome.storage.local.set({ currentIndex });
-            chrome.runtime.sendMessage({ action: "update_status", currentIndex, total: links.length });
-            state = await chrome.storage.local.get('isRunning');
+            // Re-read links too, so links appended mid-run ("Add links") are picked up.
+            state = await chrome.storage.local.get(['isRunning', 'links']);
             isRunning = state.isRunning;
+            links = state.links || links;
+            chrome.runtime.sendMessage({ action: "update_status", currentIndex, total: links.length });
             continue;
         }
 
@@ -416,10 +418,12 @@ async function startProcess() {
         // Update state to next link
         currentIndex++;
         await chrome.storage.local.set({ currentIndex });
-        chrome.runtime.sendMessage({ action: "update_status", currentIndex, total: links.length });
 
-        state = await chrome.storage.local.get('isRunning');
+        // Re-read links too, so links appended mid-run ("Add links") are picked up.
+        state = await chrome.storage.local.get(['isRunning', 'links']);
         isRunning = state.isRunning;
+        links = state.links || links;
+        chrome.runtime.sendMessage({ action: "update_status", currentIndex, total: links.length });
     }
 
     // Make sure any debounced sync backup is written before we stop.

@@ -12,6 +12,7 @@
  *   ocaSaveSubmitted(urls)   -> writes local now, sync backup debounced
  *   ocaSaveSubmittedNow(urls)-> writes local now, sync backup immediately
  *   ocaFlushSync()           -> force-write any pending debounced sync backup
+ *   ocaMergeLinks(existing, incoming) -> { merged, added } (append, deduped)
  */
 
 const OCA_SYNC_CHUNK_PREFIX = 'submittedChunk_';
@@ -132,4 +133,18 @@ async function ocaSaveSubmitted(urls) {
 async function ocaSaveSubmittedNow(urls) {
     await chrome.storage.local.set({ submittedUrls: urls });
     await __ocaWriteSyncBackup(urls);
+}
+
+// Append incoming links to the run queue, skipping any already queued (or
+// repeated within incoming). Pure: returns the new array and how many were added.
+function ocaMergeLinks(existing, incoming) {
+    const seen = new Set(existing);
+    const merged = existing.slice();
+    for (const link of incoming) {
+        if (!seen.has(link)) {
+            seen.add(link);
+            merged.push(link);
+        }
+    }
+    return { merged, added: merged.length - existing.length };
 }

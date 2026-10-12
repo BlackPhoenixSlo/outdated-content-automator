@@ -19,7 +19,7 @@ function loadStorage() {
     'chrome', 'console', 'setTimeout', 'clearTimeout',
     STORAGE_SRC +
       '\nreturn {' +
-      ' ocaLoadSubmitted, ocaSaveSubmitted, ocaSaveSubmittedNow, ocaFlushSync,' +
+      ' ocaLoadSubmitted, ocaSaveSubmitted, ocaSaveSubmittedNow, ocaFlushSync, ocaMergeLinks,' +
       ' __ocaChunkUrls, __ocaWriteSyncBackup, __ocaReadSyncBackup,' +
       ' OCA_SYNC_MAX_URLS, OCA_SYNC_CHUNK_BYTES };'
   );

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Add links** button: append links to the queue, even mid-run (duplicates
+  skipped). Start with an empty box resumes a pending queue.
+- Popup "Feedback / report issue" link to a Google Form (`FEEDBACK_FORM_URL` in
+  `config.js`).
+- Fixed garbled symbols in the popup (missing `<meta charset="utf-8">`).
+
 ## 1.0.0 — 2026-06-03
 
 First release prepared for the Chrome Web Store.

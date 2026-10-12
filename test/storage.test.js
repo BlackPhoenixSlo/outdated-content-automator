@@ -93,3 +93,25 @@ test('dropping the list (empty array) clears both local and sync', async () => {
   assert.equal(sync.__store.submittedChunkCount, 0);
   assert.deepEqual(await s.ocaLoadSubmitted(), []);
 });
+
+test('ocaMergeLinks appends new links and skips duplicates', () => {
+  resetChrome();
+  const s = loadStorage();
+
+  const existing = ['https://a.com/1.jpg', 'https://a.com/2.jpg'];
+  const incoming = ['https://a.com/2.jpg', 'https://a.com/3.jpg', 'https://a.com/3.jpg'];
+  const { merged, added } = s.ocaMergeLinks(existing, incoming);
+
+  assert.deepEqual(merged, ['https://a.com/1.jpg', 'https://a.com/2.jpg', 'https://a.com/3.jpg']);
+  assert.equal(added, 1);
+  // Must not mutate the stored array it was given.
+  assert.deepEqual(existing, ['https://a.com/1.jpg', 'https://a.com/2.jpg']);
+});
+
+test('ocaMergeLinks into an empty queue keeps incoming order', () => {
+  resetChrome();
+  const s = loadStorage();
+  const { merged, added } = s.ocaMergeLinks([], ['https://b.com/x', 'https://b.com/y']);
+  assert.deepEqual(merged, ['https://b.com/x', 'https://b.com/y']);
+  assert.equal(added, 2);
+});

@@ -55,3 +55,7 @@ const OCA_TIMINGS = {
     STALL_MAX_RETRIES: 20,          // retry a stuck link this many times before giving up
     RELOAD_ON_STALL: false,         // false = retry in place (light); true = reload the page first
 };
+
+// Google Form for feedback / issue reports, linked from the popup.
+// REPLACE this placeholder with your own form's share link.
+const FEEDBACK_FORM_URL = 'https://forms.gle/REPLACE_ME';

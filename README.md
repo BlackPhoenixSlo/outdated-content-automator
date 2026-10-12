@@ -25,6 +25,12 @@ option → paste URL → Submit → Ok), then moves on to the next link.
 3. Click **Load unpacked** and select this folder.
 4. Open the [Remove Outdated Content](https://search.google.com/search-console/remove-outdated-content)
    page, click the extension icon, paste your links, and press **Start processing**.
+5. To queue more links (even mid-run), paste them and press **Add links**: they are
+   appended to the current queue (duplicates skipped) and picked up after the
+   current link. When idle, press **Start processing** with an empty box to run
+   the remaining queue.
+6. Found a bug or have feedback? Use the **Feedback / report issue** link at the
+   bottom of the popup (the form URL is `FEEDBACK_FORM_URL` in `config.js`).
 
 ## Files
 

@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statusDiv = document.getElementById('status');
     const savedInfo = document.getElementById('savedInfo');
     const linksArea = document.getElementById('links');
+    const appendLinksBtn = document.getElementById('appendLinks');
+
+    document.getElementById('feedbackLink').href = FEEDBACK_FORM_URL;
 
     const updateSavedInfo = async () => {
         // ocaLoadSubmitted restores from the sync backup if local was wiped.
@@ -98,14 +101,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     startBtn.addEventListener('click', async () => {
         const text = linksArea.value;
         const links = text.split('\n').map(l => l.trim()).filter(l => l);
-        if (links.length === 0) {
-            statusDiv.innerText = "Please enter some valid links.";
-            return;
-        }
-
         const verifyWord = document.getElementById('verifyWord').value;
 
-        await chrome.storage.local.set({ links, verifyWord, currentIndex: 0, isRunning: true });
+        if (links.length > 0) {
+            await chrome.storage.local.set({ links, verifyWord, currentIndex: 0, isRunning: true });
+        } else {
+            // Empty box: resume a queue built with "Add links", if any is pending.
+            const res = await chrome.storage.local.get(['links', 'currentIndex']);
+            if (!res.links || (res.currentIndex || 0) >= res.links.length) {
+                statusDiv.innerText = "Please enter some valid links.";
+                return;
+            }
+            await chrome.storage.local.set({ verifyWord, isRunning: true });
+        }
         updateStatus();
 
         // Start the process in the active tab
@@ -118,6 +126,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startBtn.disabled = false;
             }
         });
+    });
+
+    // Append links to the queue (works mid-run: content.js re-reads links after each one).
+    appendLinksBtn.addEventListener('click', async () => {
+        const incoming = linksArea.value.split('\n').map(l => l.trim()).filter(l => l);
+        if (incoming.length === 0) {
+            statusDiv.innerText = "Please enter some valid links.";
+            return;
+        }
+        const res = await chrome.storage.local.get(['links', 'currentIndex']);
+        const { merged, added } = ocaMergeLinks(res.links || [], incoming);
+        const currentIndex = res.currentIndex || 0;
+        // Only seed currentIndex when unset; never overwrite it (content.js owns it mid-run).
+        await chrome.storage.local.set(res.currentIndex === undefined
+            ? { links: merged, currentIndex: 0 } : { links: merged });
+        linksArea.value = '';
+        statusDiv.innerText = `Added ${added} link${added === 1 ? '' : 's'} `
+            + `(${incoming.length - added} duplicates skipped). Queue: ${currentIndex}/${merged.length}`;
     });
 
     stopBtn.addEventListener('click', async () => {
